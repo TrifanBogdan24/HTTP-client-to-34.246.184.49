@@ -9,7 +9,7 @@ install-checker:
 
 
 clean:
-	rm -f ./a.out
+	rm -f ./a.out ./server
 
 
 run:

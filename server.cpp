@@ -1,5 +1,8 @@
-#include <iostream>
 #include "nlohmann/json.hpp"
+#include "buffer.h"
+#include "helpers.h"
+
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -11,405 +14,221 @@ using json = nlohmann::json;
 using namespace std;
 
 
-class Book {
- public:
-    int id;
-    string title;
-    string author;
-    string genre;
-    string publisher;
-    int page_count;
-
- public:
-    // constructor default
-    Book() {}
-
-
-};
 
 
 
-void to_json(json &j, const Book &b) {
-    j = json{
-        {"id", b.id},
-        {"title", b.title},
-        {"author", b.author},
-        {"genre", b.genre},
-        {"publisher", b.publisher},
-        {"page_count", b.page_count}
+
+
+
+
+
+// void to_json(json &j, const Book &b) {
+//     j = json{
+//         {"id", b.id},
+//         {"title", b.title},
+//         {"author", b.author},
+//         {"genre", b.genre},
+//         {"publisher", b.publisher},
+//         {"page_count", b.page_count}
+//     };
+// }
+
+
+// void from_json(const json &j, Book &b) {
+//     j.at("id").get_to(b.id);
+//     j.at("title").get_to(b.title);
+//     j.at("author").get_to(b.author);
+//     j.at("genre").get_to(b.genre);
+//     j.at("publisher").get_to(b.publisher);
+//     j.at("page_count").get_to(b.page_count);
+// }
+
+// void vector_to_json(json &j, const vector<Book> &books) {
+//     j = json::array();
+//     for (const auto& book : books) {
+//         j.push_back({
+//             {"id", book.id},
+//             {"title", book.title}
+//         });
+//     }
+// }
+
+// void vector_from_json(const json &j, vector<Book> &books) {
+//     for (const auto& item : j) {
+//         Book b = Book();
+//         item.at("id").get_to(b.id);
+//         item.at("title").get_to(b.title);
+//         books.push_back(b);
+//     }
+// }
+
+
+
+
+int string_to_int(string &str)
+{
+    int nr = 0;
+    for (auto c: str) {
+        if (c < '0' || c > '9')
+            return -1;
+        nr = nr * 10 + c - '0';
+    }
+
+    return nr;
+}
+
+
+void space_trimmer(string &str)
+{
+    while (str.size() > 0 && str[0] == ' ')
+        str.erase(str.begin(), str.begin() + 1);
+
+    while (str.size() > 0 && str[str.size() - 1] == ' ')
+        str.pop_back();
+}
+
+
+string read_input_string(string msg)
+{
+    cout << msg;
+    string input_str;
+    getline(cin, input_str);
+    space_trimmer(input_str);
+    return input_str;
+}
+
+void registerUser()
+{
+    // Inputul din consola (stdin)
+    string username = read_input_string("username=");
+    string password = read_input_string("password=");
+
+    // Ruta de acces
+    string path = "/api/v1/tema/auth/register";
+
+    // Tip payload
+    string payloadType = "application/json";
+
+    // Construirea obiectului JSON cu datele de înregistrare
+    json json_obj = {
+        {"username", username},
+        {"password", password}
     };
+
+    // Serializarea obiectului JSON în format string (payload)
+    string payload = json_obj.dump(4);
+
+    // Deschiderea conexiunii către server
+    const int portno = 8080;
+    const string host_ipv4 = "34.246.184.49";
+    int sockfd = open_connection(host_ipv4, portno, AF_INET, SOCK_STREAM, 0);
+
+    // Trimiterea cererii POST către server
+    send_to_server(sockfd, "POST " + path + " HTTP/1.1\r\n");
+    send_to_server(sockfd, "Host: " + host_ipv4 + "\r\n");
+    send_to_server(sockfd, "Content-Type: " + payloadType + "\r\n");
+    send_to_server(sockfd, "Content-Length: " + to_string(payload.size()) + "\r\n");
+    send_to_server(sockfd, "\r\n");
+    send_to_server(sockfd, payload);
+
+    // Primirea răspunsului de la server
+    string response = receive_from_server(sockfd);
+
+    // Închiderea conexiunii
+    close_connection(sockfd);
+
+    // Verificarea răspunsului de la server și tratarea erorilor
+    if (response.find("200") != string::npos || response.find("OK") != string::npos) {
+        cout << "SUCCESS: Contul a fost inregistrat cu succes!" << endl;
+    } else {
+        // Extrage doar textul erorii din răspuns
+        string error_text = basic_extract_json_response(response);
+        // Afișează textul erorii
+        cout << "ERROR: Eroare la inregistrare: " << error_text << endl;
+    }
 }
 
 
-void from_json(const json &j, Book &b) {
-    j.at("id").get_to(b.id);
-    j.at("title").get_to(b.title);
-    j.at("author").get_to(b.author);
-    j.at("genre").get_to(b.genre);
-    j.at("publisher").get_to(b.publisher);
-    j.at("page_count").get_to(b.page_count);
-}
 
-class User {
- public:
-    string username, password;
-    vector<Book> library;
-    bool library_access;
-
- public:
-    // contructorul default
-    User() {}
-
- public:
-    // constructorul cu parametri
-    User(const string username, const string password)
-    {
-        this->username = username;
-        this->password = password;
-
-        // by default, la creare, utilizatorul nu isi acceseaza biblioteca
-        this->library_access = false;
-    }
-    
- public:
-    void enter_user_library();
-    void get_user_books();
-    void get_user_book();
-    void add_user_book();
-    void delete_user_book();
-};
-
-
-
-class Server {
- public:
-    vector<User> users;
-    User logged_user;
-
-    // `false` daca niciun user nu este conectat
-    // `true` daca un user s-a conectat
-    bool is_someone_logged;
-
-
-
-public:
-    // comenzile serverului
-    void registerUser();        // register
-    void login();
-    void enter_library();
-    void get_books();
-    void get_book();
-    void add_book();
-    void delete_book();
-    void logout();
-    void exitServer();          // exit
-
-
-
-
-
-
-public:
-    // asundem constructorul clasei
-    Server()
-    {
-        is_someone_logged = false;
-    }
-
-
-};
-
-
-
-void Server::registerUser()
+void login()
 {
-    string input_username, input_password;
+    // inputul din consola (stdin)
+    string username = read_input_string("username=");
+    string password = read_input_string("password=");
 
-    cout << "username=";
-    getline(cin, input_username);
+    // rust de acces
+    string path = "POST /api/v1/tema/auth/login";
 
-    cout << "password=";
-    getline(cin, input_password);
 
-    for (auto user : this->users) {
-        if (user.username == input_username) {
-            cerr << "ERROR: the username `" << input_username << "` is already taken.\n";
-            return;
-        }
-    }
+    // tip payload
+    string payload = "application/json";
 
-    cout << "SUCCESS: the user `" << input_username << "` has been registered.\n";
-    
-    // inregistrarea efectiva a unui utilizator
-    User user(input_username, input_password);
-    this->users.push_back(user);
+
+    // TODO: POST request 
 }
 
 
-void Server::login()
+void get_books()
 {
-    string input_username, input_password;
 
-    cout << "username=";
-    getline(cin, input_username);
-
-    cout << "password=";
-    getline(cin, input_password);
-
-
-    for (auto user : this->users) {
-        if (user.username != input_username)
-            continue;
-
-        if (user.password != input_password) {
-            cerr << "ERROR: invalid password. try again.\n";
-            return;
-        }
-
-        if (user.password == input_password) {
-            cout << "SUCCESS: user " << input_username << " is loged in\n";
-            
-            // logarea efectiva a unui utilizator
-            this->logged_user = user;
-            this->is_someone_logged = true;
-            return;
-        }
-
-
-    }
-
-    cerr << "ERROR: invalid username `" << input_username << "`\n";
 }
 
-
-
-
-
-
-void User::enter_user_library()
+void get_book()
 {
-    this->library_access = true;
-    cout << "SUCCESS: Welcome to you library, " << username << ".\n";
+
 }
 
-void Server::enter_library()
+void add_book()
 {
-    if (this->is_someone_logged == false) {
-        cerr << "ERROR: no user is logged in the server..\n";
-        return;
-    }
 
-
-    logged_user.enter_user_library(); 
 }
 
-
-
-void User::get_user_books()
+void delete_book()
 {
-    if (this->library_access == false) {
-        cerr << "ERROR: please enter the library first, " << username << ".\n";
-        return;
-    }
 
-
-    // TODO: crearea obiectului JSON
 }
 
-
-void Server::get_books()
+void logout()
 {
-    if (this->is_someone_logged == false) {
-        cerr << "ERROR: no user is logged in the server.\n";
-        return;
-    }
 
+}
 
-    logged_user.get_user_books();
+void exit()
+{
 
 }
 
 
-void User::get_user_book()
+void enter_library()
 {
-    if (this->library_access == false) {
-        cerr << "ERROR: please enter the library first, " << username << ".\n";
-        return;
-    }
 
-
-    int input_id;
-    Book book;
-
-    cout << "id=";
-    cin >> input_id;
-
-
-    for (auto book : this->library) {
-        if (book.id == input_id) {
-            // TODO: crearea unui text JSON cu informatia cartii cu ID-ul dat
-            cout << "SUCCESS: \n";
-            json json_obj = book;
-            cout << json_obj.dump(4) << "\n";      // indentare de 4
-            
-
-            return;
-        }
-    }
-
-
-    cerr << "ERROR: Invalid book id `" << id << "`.\n";
-
-}
-
-void Server::get_book()
-{
-    if (this->is_someone_logged == false) {
-        cerr << "ERROR: no user is logged in the server.\n";
-        return;
-    }
-
-    this->logged_user.get_user_book();
-}
-
-
-
-void User::add_user_book()
-{
-    if (this->library_access == false) {
-        cerr << "ERROR: please enter the library first, " << username << ".\n";
-        return;
-    }
-
-    string input_title; 
-    cout << "title=";
-    getline(cin, input_title);
-
-    string input_author;
-    cout << "author=";
-    getline(cin, input_author);
-
-    string input_genre;
-    cout << "genre=";
-    getline(cin, input_genre);
-
-    string input_publisher;
-    cout << "publisher=";
-    getline(cin, input_publisher);
-
-    int input_pg_cnt;
-    cout << "page_count=";
-    cin >> input_pg_cnt;
-
-    Book book;
-    book.author = input_author;
-    book.title = input_title;
-    book.genre = input_genre;
-    book.publisher = input_publisher;
-    book.page_count = input_pg_cnt;
-
-    // adaugarea efectiva a cartii in biblioteca utilizatorului logat
-    this->library.push_back(book);
-}
-
-
-void Server::add_book()
-{
-    if (this->is_someone_logged == false) {
-        cerr << "ERROR: no user is logged in the server.\n";
-        return;
-    }
-
-    logged_user.add_user_book();
-}
-
-
-void User::delete_user_book()
-{
-    if (this->library_access == false) {
-        cerr << "ERROR: please enter the library first, " << username << ".\n";
-        return;
-    }
-
-    int input_id;
-    cout << "id = ";
-    cin >> input_id;
-
-
-    
-    for (auto itr = this->library.begin(); itr != this->library.end(); itr++) {
-        if (itr->id == input_id) {
-            cout << "SUCCESS: The book with id `" << input_id << "` has been succesfully deleted!\n";
-
-            // stergerea efectiva a cartii din biblioteca utilizatorului logat
-            this->library.erase(itr);
-            
-            return;
-        }
-    }
-
-    cout << "ERROR: There is no book with id `" << input_id << "`.\n";
-}
-
-
-void Server::delete_book()
-{
-    if (this->is_someone_logged == false) {
-        cerr << "ERROR: no user is logged in the server.\n";
-        return;
-    }
-
-    logged_user.delete_user_book();
-}
-
-
-void Server::logout()
-{
-    if (this->is_someone_logged == false) {
-        cerr << "ERROR: no user is logged in the server.\n";
-        return;
-    }
-
-
-    cout << "SUCCESS: The user " << this->logged_user.username << " has been log out.\n";
-    
-    // delogarea efectiva a utilizatorului
-    is_someone_logged = false;
-}
-
-
-
-void Server::exitServer()
-{
-    exit(EXIT_SUCCESS);
 }
 
 
 int main()
 {
-    Server server;
     string command;
 
 
     while (true) {
-        getline(cin, command);
+        command = read_input_string("");
 
         if (command == "register")
-            server.registerUser();
+            registerUser();
         else if (command == "login")
-            server.login();
+            login();
         else if (command == "enter_library")
-            server.enter_library();
+            enter_library();
         else if (command == "get_books")
-            server.get_books();
+            get_books();
         else if (command == "get_book")
-            server.get_book();
+            get_book();
         else if (command == "add_book")
-            server.add_book();
+            add_book();
         else if (command == "delete_book")
-            server.delete_book();
+            delete_book();
         else if (command == "logout")
-            server.logout();
+            logout();
         else if (command == "exit") 
             break;
     }
