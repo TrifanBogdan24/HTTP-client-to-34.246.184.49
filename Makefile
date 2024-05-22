@@ -1,5 +1,5 @@
-build: client.c helpers.c buffer.c
-	gcc -o client client.c helpers.c buffer.c
+build: client.c helpers.c buffer.c parson.c
+	gcc -o client client.c helpers.c buffer.c parson.c
 
 
 

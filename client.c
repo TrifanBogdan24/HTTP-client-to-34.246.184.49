@@ -18,7 +18,10 @@ username=test&password=test
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h>      /* struct hostent, gethostbyname */
 #include <arpa/inet.h>
+#include <string.h>
+#include <ctype.h>
 #include "helpers.h"
+#include "parson.h"
 
 
 
@@ -30,6 +33,26 @@ int get_res_code(char *response)
 {
     return atoi(response + 9);
 }
+
+
+
+void trim(char *str) {
+    char *end;
+
+    // Trim leading space
+    while (isspace((unsigned char) *str)) str++;
+
+    if (*str == 0) // All spaces?
+        return;
+
+    // Trim trailing space
+    end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char) *end)) end--;
+
+    // Write new null terminator
+    *(end + 1) = 0;
+}
+
 
 
 void printAndReadInput(const char* prompt)
@@ -55,6 +78,10 @@ void register_user()
     printf("password=");
     scanf("%s", password);
     getchar();
+
+    trim(username);
+    trim(password);
+
     char request_body[200];
     sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}", username, password);
     char message[1024];
@@ -87,6 +114,10 @@ void login_user()
     scanf("%s", password);
     getchar();
 
+    trim(username);
+    trim(password);
+
+
     char request_body[200];
     sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}", username, password);
     char message[1024];
@@ -114,10 +145,11 @@ void login_user()
             strncpy(cookie, cookie_start, cookie_length);
             cookie[cookie_length] = '\0'; // Null-terminate the string
             
-
         }
     }
     
+    while (strlen(cookie) > 0 && (cookie[0] == ' ' || cookie[0] == '\t'))
+        strcpy(cookie, cookie + 1);
 
 
     int res_code = get_res_code(response);
@@ -132,7 +164,8 @@ void login_user()
 }
 
 
-char *cookie;
+
+
 
 void enter_library()
 {
@@ -149,7 +182,8 @@ void enter_library()
     // sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}", username, password);
     char message[1024];
     
-    sprintf(message, "GET /api/v1/tema/auth/access HTTP/1.1\r\nContent-Type: application/json\r\nCookie: %s\r\n\r\n", cookie);
+    sprintf(message, "GET /api/v1/tema/auth/access HTTP/1.1\r\nHost: %s:%d\r\nContent-Type: application/json\r\nCookie: %s\r\n\r\n",
+        "34.246.184.49", 8080, cookie);
     send_to_server(sockfd, message);
     char *response = receive_from_server(sockfd);
 
@@ -168,9 +202,52 @@ void enter_library()
     close_connection(sockfd);
 }
 
+
+
+void get_book_by_id()
+{
+    if (cookie == NULL) {
+        printf("Te rog sa te conectezi mai intai.\n");
+        return;
+    }
+
+    if (token == NULL) {
+        printf("Te rog sa iti accesezi biblioteca mai intai.\n");
+        return;
+    }
+
+
+    int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
+    char id[50];
+    printf("id=");
+    getchar();
+
+    trim(id);
+
+
+    char request_body[200];
+    sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}");
+    char message[1024];
+    sprintf(message, "POST /api/v1/tema/auth/login HTTP/1.1\r\nHost: %s:%d\r\nContent-Type: application/json\r\nContent-Length: %ld\r\n\r\n%s", "34.246.184.49", 8080, strlen(request_body), request_body);
+    send_to_server(sockfd, message);
+    char *response = receive_from_server(sockfd);
+    close_connection(sockfd);
+
+
+}
+
+
+
+void get_all_books()
+{
+
+}
+
+
+
 int main()
 {
- char command[20000];
+    char command[20000];
 
     while (1) {
         fgets(command, sizeof(command), stdin);
