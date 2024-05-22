@@ -1,5 +1,5 @@
-build:
-	g++ -I./include server.cpp -o server
+build: client.c helpers.c buffer.c
+	gcc -o client client.c helpers.c buffer.c
 
 
 
@@ -9,11 +9,11 @@ install-checker:
 
 
 clean:
-	rm -f ./a.out ./server
+	rm -f ./a.out ./client
 
 
-run:
-	./server
+run: 
+	./client
 
 archive:
 	rm -rf ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC
