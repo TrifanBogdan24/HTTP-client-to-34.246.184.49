@@ -43,6 +43,15 @@ int is_valid_input(char *str)
 }
 
 
+
+int is_str_number(char *str)
+{
+    for (int i = 0; i < strlen(str); i++)
+        if (str[i] < '0' || str[i] > '9')
+            return 0;       // invalid input
+    return 1;
+}
+
 int get_res_code(char *response)
 {
     return atoi(response + 9);
@@ -191,7 +200,7 @@ void register_user()
 }
 
 
-void login_user()
+void login()
 {
     char *username = read_console_input("username=");
     char *password = read_console_input("password=");
@@ -450,6 +459,18 @@ void add_book()
     }
 
 
+    if (is_str_number(page_count) == 0) {
+        printf("ERROR: Atributul introdus pentru numarul de pagini nu este un numar.\n");
+        free(title);
+        free(author);
+        free(publisher);
+        free(genre);
+        free(page_count);
+        return;
+    }
+
+
+
     size_t json_size = 100 + strlen(title) + strlen(author) + strlen(publisher) + strlen(genre) + strlen(page_count);
 
     char *request_body_json = (char *) malloc(json_size * sizeof(char));
@@ -499,6 +520,110 @@ void add_book()
 
 
 
+void delete_book()
+{
+    if (cookie == NULL) {
+        printf("ERROR: Trebuie sa te loghezi mai intai.\n");
+        return;
+    }
+
+
+    if (token == NULL) {
+        printf("ERROR: Trebuie sa iti accesezi biblioteca mai intai.\n");
+        return;
+    }
+
+
+    char *id = read_console_input("id=");
+
+    if (is_valid_input(id) == 0) {
+        printf("ERROR: ID-ul introdus este invalid (contine spatii).\n");
+        free(id);
+        return;
+    }
+
+    if (is_str_number(id) == 0) {
+        printf("ERROR: ID-ul introdus este invalid (nu este un numar natural intreg).\n");
+        free(id);
+        return;
+    }
+    
+
+    
+    int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
+
+
+    int path_size = 1000;
+    char *path = (char *) malloc(path_size * sizeof(char));
+    snprintf(path, path_size,  "/api/v1/tema/library/books/:%s", id);
+
+
+    char *message = compute_delete_request("34.246.184.49", path, cookie, token);
+    send_to_server(sockfd, message);
+    char *response = receive_from_server(sockfd);
+
+    close_connection(sockfd);
+
+    int res_code = get_res_code(response);
+
+
+    free(response);
+
+
+    if (res_code != 200 && res_code != 201) {
+        printf("ERROR: Eroare la stergerea cartii. ID-ul cartii nu sa gasteste in biblioteca.\n");
+        return;
+    }
+
+
+
+    printf("SUCCESS: Cartea a fost stearsa cu succes.\n");
+
+}
+
+
+
+void logout()
+{
+    if (cookie == NULL) {
+        printf("ERROR: Trebuie sa te loghezi mai intai.\n");
+        return;
+    }
+
+
+
+
+    int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
+
+    char *message = compute_get_request("34.246.184.49", "/api/v1/tema/auth/logout", cookie, token);
+
+
+    send_to_server(sockfd, message);
+    char *response = receive_from_server(sockfd);
+
+    close_connection(sockfd);
+    int res_code = get_res_code(response);
+
+
+    free(response);
+
+    if (res_code != 200 && res_code != 201) {
+        printf("ERROR: Nu te-ai putut deconecta.\n");
+        return;
+    }
+
+
+
+
+    printf("SUCCESS: Deconectare cu succes.\n");
+
+
+    cookie = NULL;
+    token = NULL;
+}
+
+
+
 int main()
 {
     char command[STR_STDIN_LENGTH];
@@ -519,7 +644,7 @@ int main()
         if (strcmp(command, "register") == 0)
             register_user();
         else if (strcmp(command, "login") == 0)
-            login_user();
+            login();
         else if (strcmp(command, "enter_library") == 0)
             enter_library();
         else if (strcmp(command, "get_books") == 0)
@@ -528,10 +653,12 @@ int main()
             get_book_by_id();
         else if (strcmp(command, "add_book") == 0)
             add_book();
+        else if (strcmp(command, "delete_book") == 0)
+            delete_book();
+        else if (strcmp(command, "logout") == 0)
+            logout();
         else if (strcmp(command, "exit") == 0)
             break;
-
-
     }
 
 
