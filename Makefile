@@ -12,7 +12,7 @@ run:
 
 archive:
 	rm -rf ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC
-	zip -r ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC README.md Makefile *.h *c
+	zip ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC.zip README.md Makefile *.h *c
 
 
 
