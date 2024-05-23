@@ -231,3 +231,6 @@ La `logout`, vor disparea valorile continute de variabilele globale pentru `cook
 iar pentru a folosi cu `SUCCESS` comenzile de mai sus, cineva trebui sa se conecteze
 si sa isi acceseze biblioteca.
 
+
+La intalnirea comenzii `exit`, bucla infinita de citire se va opri,
+terminand executia progamului
