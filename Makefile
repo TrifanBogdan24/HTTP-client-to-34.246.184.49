@@ -1,5 +1,5 @@
-build: client.c helpers.c buffer.c parson.c
-	gcc -o client client.c helpers.c buffer.c parson.c
+build: client.c helpers.c buffer.c parson.c requests.c
+	gcc -o client client.c helpers.c buffer.c parson.c requests.c
 
 
 
@@ -17,4 +17,18 @@ run:
 
 archive:
 	rm -rf ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC
-	zip -r ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC Makefile *.h *c *.cpp
+	zip -r ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC README.md Makefile *.h *c *.cpp
+
+
+checker-help:
+	python3 homework4-public/checker/checker.py --help
+
+check-1:
+	python3 homework4-public/checker/checker.py ./client
+
+check-2:
+	python3 homework4-public/checker/checker.py --user 'myuser-1337:hunter2' ./client
+
+
+check-all:
+	python3 homework4-public/checker/checker.py ./client  --script ALL

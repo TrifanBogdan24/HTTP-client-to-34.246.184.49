@@ -21,36 +21,55 @@ username=test&password=test
 #include <string.h>
 #include <ctype.h>
 #include "helpers.h"
+#include "requests.h"
 #include "parson.h"
 
+
+#define STDIN_STR_LENGTH 1000
 
 
 
 char *cookie = NULL;
 char *token = NULL;
 
-int get_res_code(char *response)
+
+char *trim(char *str)
 {
+    char *end;
+
+    end = str + strlen(str) - 1;
+    while(end > str && isspace((unsigned char)*end))
+        end--;
+
+    end[1] = '\0';
+
+    return str;
+}
+
+int get_res_code(char *response) {
     return atoi(response + 9);
 }
 
-
-
-void trim(char *str) {
-    char *end;
-
-    // Trim leading space
-    while (isspace((unsigned char) *str)) str++;
-
-    if (*str == 0) // All spaces?
-        return;
-
-    // Trim trailing space
-    end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char) *end)) end--;
-
-    // Write new null terminator
-    *(end + 1) = 0;
+int read_string_as_number(char *name) {
+    int invalid_str = 1;
+    char line[LINELEN];
+    char *p;
+    while (invalid_str) {
+        invalid_str = 0;
+        printf("%s", name);
+        fgets(line, LINELEN, stdin);
+        trim(line);
+        p = line;
+        while (*p != '\0') {
+            if (*p < 48 || *p > 57) {
+                printf("Please enter a valid number!\n");
+                invalid_str = 1;
+                break;
+            }
+            p++;
+        }
+    }
+    return atoi(line);
 }
 
 
@@ -67,39 +86,65 @@ void printAndReadInput(const char* prompt)
 }
 
 
+char *json_username_and_password(char *username, char *password)
+{
+    JSON_Value *root_value = json_value_init_object();
+    JSON_Object *root_object = json_value_get_object(root_value);
+
+    json_object_set_string(root_object, "username", username);
+    json_object_set_string(root_object, "password", password);
+
+    char *serialized_string = json_serialize_to_string_pretty(root_value);
+    // afisare JSON: puts(serialized_string);
+
+    // stergere json_free_serialized_string(serialized_string);
+    json_value_free(root_value);
+
+    return serialized_string;
+}
 
 
 void register_user()
 {
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
-    char username[50], password[50];
+    char username[STDIN_STR_LENGTH], password[STDIN_STR_LENGTH];
     printf("username=");
-    scanf("%s", username);
+    fgets(username, sizeof(username), stdin);
+
     printf("password=");
-    scanf("%s", password);
-    getchar();
+    fgets(password, sizeof(password), stdin);
 
-    trim(username);
-    trim(password);
 
-    char request_body[200];
-    sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}", username, password);
-    char message[1024];
-    sprintf(message, "POST /api/v1/tema/auth/register HTTP/1.1\r\nHost: %s:%d\r\nContent-Type: application/json\r\nContent-Length: %ld\r\n\r\n%s", "34.246.184.49", 8080, strlen(request_body), request_body);
+
+    if (username[strlen(username) - 1] == '\n')
+        username[strlen(username) - 1] = '\0';
+
+    if (password[strlen(password) - 1] == '\n')
+        password[strlen(password) - 1] = '\0';
+
+    char *request_body = json_username_and_password(username, password);
+
+    char *message = compute_post_request("34.246.184.49", "/api/v1/tema/auth/register", "application/json", request_body, NULL, NULL);
+
+
     send_to_server(sockfd, message);
     char *response = receive_from_server(sockfd);
+    
+
     close_connection(sockfd);
 
+    // afisare raspuns: printf("%s\n", response);
 
     int res_code = get_res_code(response);
 
-    if (res_code == 200 || res_code == 201) {
-        printf("SUCCESS: Utilizator `%s` a fost inregistrat in baza de date.\n", username);
-    } else {
-        printf("ERROR: Exista deja user-ul `%s`. Alege alt nume.\n", username);
+    if (res_code != 200 && res_code != 201) {
+        printf("ERROR: Username-ul este deja luat.\n");
+        free(response);
+        return;
     }
 
-    
+
+    printf("SUCCESS: Inregistrare efectuata cu succes.\n");    
     free(response);
 }
 
@@ -107,25 +152,48 @@ void register_user()
 void login_user()
 {
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
-    char username[50], password[50];
+    char username[STDIN_STR_LENGTH], password[STDIN_STR_LENGTH];
     printf("username=");
-    scanf("%s", username);
+    fgets(username, sizeof(username), stdin);
+
     printf("password=");
-    scanf("%s", password);
-    getchar();
-
-    trim(username);
-    trim(password);
+    fgets(password, sizeof(password), stdin);
 
 
-    char request_body[200];
-    sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}", username, password);
-    char message[1024];
-    sprintf(message, "POST /api/v1/tema/auth/login HTTP/1.1\r\nHost: %s:%d\r\nContent-Type: application/json\r\nContent-Length: %ld\r\n\r\n%s", "34.246.184.49", 8080, strlen(request_body), request_body);
+
+    if (username[strlen(username) - 1] == '\n')
+        username[strlen(username) - 1] = '\0';
+
+    if (password[strlen(password) - 1] == '\n')
+        password[strlen(password) - 1] = '\0';
+
+    char *request_body = json_username_and_password(username, password);
+
+    char *message = compute_post_request("34.246.184.49", "/api/v1/tema/auth/login", "application/json", request_body, NULL, NULL);
+
+
     send_to_server(sockfd, message);
     char *response = receive_from_server(sockfd);
+    
+    // afisare raspuns: printf("%s\n", response);
+
     close_connection(sockfd);
 
+
+
+
+
+    int res_code = get_res_code(response);
+
+    if (res_code != 200 && res_code != 201) {
+        printf("ERROR: Credentiale invalide.\n");
+        free(response);
+        return;
+    }
+
+
+
+    printf("SUCCESS: Logare efectuata cu succes.\n");
 
     char *cookie_start = strstr(response, "Set-Cookie:");
     if (cookie_start != NULL) {
@@ -151,103 +219,56 @@ void login_user()
     while (strlen(cookie) > 0 && (cookie[0] == ' ' || cookie[0] == '\t'))
         strcpy(cookie, cookie + 1);
 
+    
+    
 
-    int res_code = get_res_code(response);
-    if (res_code == 200) {
-        // strcpy(session_cookie, cookie);
-        printf("SUCCESS: Bine ai revenit, %s! ", username);
-        printf("Acesta este cookie-ul tau: %s\n", cookie);
-    } else {
-        printf("ERROR: Nu exista user-ul `%s`!\n", username);
-    }
     free(response);
 }
 
 
 
 
-
 void enter_library()
 {
+    int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
+
     if (cookie == NULL) {
-        printf("ERROR: Conecteaza-te inainte a accesa biblioteca.!\n");
+        printf("ERROR: Trebuie sa te loghezi inainte.\n");
         return;
     }
 
 
-    int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
+    // afisare token (primit la logare): printf("\nCookie: %s\n", cookie);
 
-    char request_body[200];
-    
-    // sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}", username, password);
-    char message[1024];
-    
-    sprintf(message, "GET /api/v1/tema/auth/access HTTP/1.1\r\nHost: %s:%d\r\nContent-Type: application/json\r\nCookie: %s\r\n\r\n",
-        "34.246.184.49", 8080, cookie);
+    char *message = compute_get_request("34.246.184.49", "/api/v1/tema/library/access", cookie, NULL);
     send_to_server(sockfd, message);
     char *response = receive_from_server(sockfd);
 
+    close_connection(sockfd);
 
-    printf("%s\n", response);
-    
+    // afisare raspuns: printf("%s\n", response);
+
+
     int res_code = get_res_code(response);
-    if (res_code == 200 || res_code == 201) {
-        token = (char *) malloc(sizeof(response) * sizeof(char));
-        strcpy(token, response);
-        printf("SUCCESS: Ai access la biblioteca.!\n");
-    } else {
-        printf("ERROR: Nu poti accesa biblioteca.!\n");
-    }
 
-    close_connection(sockfd);
-}
-
-
-
-void get_book_by_id()
-{
-    if (cookie == NULL) {
-        printf("Te rog sa te conectezi mai intai.\n");
+    if (res_code != 200 && res_code != 201) {
+        printf("ERROR: Ne pare rau, nu ai putut sa iti accesezi biblioteca.\n");
+        free(response);
         return;
     }
 
-    if (token == NULL) {
-        printf("Te rog sa iti accesezi biblioteca mai intai.\n");
-        return;
-    }
+    // afisare token (primit la accesul bibliotecii): printf("\nToken: %s\n", token);
 
-
-    int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
-    char id[50];
-    printf("id=");
-    getchar();
-
-    trim(id);
-
-
-    char request_body[200];
-    sprintf(request_body, "{\"username\":\"%s\",\"password\":\"%s\"}");
-    char message[1024];
-    sprintf(message, "POST /api/v1/tema/auth/login HTTP/1.1\r\nHost: %s:%d\r\nContent-Type: application/json\r\nContent-Length: %ld\r\n\r\n%s", "34.246.184.49", 8080, strlen(request_body), request_body);
-    send_to_server(sockfd, message);
-    char *response = receive_from_server(sockfd);
-    close_connection(sockfd);
-
-
+    printf("SUCCESS: Bine ai revenit in biblioteca ta!.\n");
 }
 
 
-
-void get_all_books()
-{
-
-}
 
 
 
 int main()
 {
-    char command[20000];
+    char command[STDIN_STR_LENGTH];
 
     while (1) {
         fgets(command, sizeof(command), stdin);
