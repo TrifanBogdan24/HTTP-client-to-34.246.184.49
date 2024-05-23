@@ -1,15 +1,3 @@
-/**
- *
-POST /api/v1/tema/auth/login HTTP/1.1
-Host: 34.246.184.49:8080
-Content-Type: application/x-www-form-urlencoded
-Cookie: connect.sid=s%3AKnXqtRkqHLvRlFdhJZIgC8BSQkp4z6nx.q72T5ptizYZu5jtaQNrAx8TbNFt1PlbAjuPfKguOkC4
-Content-Length: 27
-
-username=test&password=test
-*/
-
-
 #include <stdio.h>      /* printf, sprintf */
 #include <stdlib.h>     /* exit, atoi, malloc, free */
 #include <unistd.h>     /* read, write, close */
@@ -22,11 +10,9 @@ username=test&password=test
 #include <ctype.h>
 #include "helpers.h"
 #include "requests.h"
-#include "parson.h"
 
 
 #define STR_STDIN_LENGTH 1000
-
 
 
 char *cookie = NULL;
@@ -53,8 +39,10 @@ int is_str_number(char *str)
 }
 
 /**
- * response content:
+ * extregem codul din raspunsul HTTP, situat imediat dupa textul
+ * `HTTP/1.1 `
  * 
+ * exemplu: pt `HTTP/1.1 200 OK....`, codul va fi 200
 */
 int get_res_code(char *response)
 {
@@ -69,7 +57,8 @@ char* read_console_input(const char *prompt)
 {
     char *str = (char *) malloc(STR_STDIN_LENGTH * sizeof(char));
     
-    printf("%s", prompt);
+    if (prompt != NULL)
+        printf("%s", prompt);
     
     fgets(str, STR_STDIN_LENGTH, stdin);
     
@@ -81,46 +70,9 @@ char* read_console_input(const char *prompt)
     return str;
 }
 
-char *json_credentials(char *username, char *password)
-{
-    JSON_Value *root_value = json_value_init_object();
-    JSON_Object *root_object = json_value_get_object(root_value);
-
-    json_object_set_string(root_object, "username", username);
-    json_object_set_string(root_object, "password", password);
-
-    char *serialized_string = json_serialize_to_string_pretty(root_value);
-    // afisare JSON: puts(serialized_string);
-
-    // stergere json_free_serialized_string(serialized_string);
-    json_value_free(root_value);
-
-    return serialized_string;
-}
 
 
 
-char *json_book_attributes(char *id, char *title, char *author, char *publisher, char *genre, char *page_count)
-{
-    JSON_Value *root_value = json_value_init_object();
-    JSON_Object *root_object = json_value_get_object(root_value);
-
-    json_object_set_string(root_object, "id", id);
-    json_object_set_string(root_object, "title", title);
-    json_object_set_string(root_object, "author", title);
-    json_object_set_string(root_object, "publisher", title);
-    json_object_set_string(root_object, "genre", title);
-    json_object_set_string(root_object, "page_count", title);
-
-
-    char *serialized_string = json_serialize_to_string_pretty(root_value);
-    // afisare JSON: puts(serialized_string);
-
-    // stergere json_free_serialized_string(serialized_string);
-    json_value_free(root_value);
-
-    return serialized_string;
-}
 
 
 void register_user()
@@ -132,7 +84,7 @@ void register_user()
     int is_valid_password = is_valid_input(password);
 
     if (is_valid_username == 0 && is_valid_password == 0) {
-        printf("ERROR: Username-ul si parola sunt invalide, contin spatii.\n");
+        printf("ERROR: Username-ul si parola sunt invalide, ambele contin spatii.\n");
         free(username);
         free(password);
         return;
@@ -166,6 +118,10 @@ void register_user()
 
 
 
+
+    free(username);
+    free(password);
+
     char *message = compute_post_request("34.246.184.49", "/api/v1/tema/auth/register", "application/json", request_body_json, NULL, NULL);
 
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
@@ -181,8 +137,7 @@ void register_user()
     // afisare raspuns: printf("%s\n", response);
 
 
-    free(username);
-    free(password);
+
 
     free(response);
     free(request_body_json);
@@ -243,6 +198,8 @@ void login()
         username, password);
 
 
+    free(username);
+    free(password);
 
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
 
@@ -258,10 +215,6 @@ void login()
 
 
     // afisare raspuns: printf("%s\n", response);
-
-
-    free(username);
-    free(password);
 
 
     free(request_body_json);
@@ -501,7 +454,7 @@ void add_book()
 
 
     if (is_str_number(page_count) == 0) {
-        printf("ERROR: Atributul introdus pentru numarul de pagini nu este un numar.\n");
+        printf("ERROR: Atributul introdus pentru numarul de pagini nu este un numar intreg pozitiv.\n");
         free(title);
         free(author);
         free(publisher);
@@ -522,7 +475,11 @@ void add_book()
 
     // pentru afisare: printf("%s\n", request_body_json);
 
-
+    free(title);
+    free(author);
+    free(publisher);
+    free(genre);
+    free(page_count);
 
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
     char *message = compute_post_request("34.246.184.49", "/api/v1/tema/library/books", "application/json",
@@ -530,6 +487,7 @@ void add_book()
 
     send_to_server(sockfd, message);
     char *response = receive_from_server(sockfd);
+    int res_code = get_res_code(response);
     
 
     close_connection(sockfd);
@@ -537,15 +495,10 @@ void add_book()
     free(message);
     free(request_body_json);
 
-    free(title);
-    free(author);
-    free(publisher);
-    free(genre);
-    free(page_count);
+
 
     // afisare raspuns: printf("%s\n", response);
 
-    int res_code = get_res_code(response);
     free(response);
 
 
@@ -563,6 +516,10 @@ void add_book()
 
 void delete_book()
 {
+
+
+    char *id = read_console_input("id=");
+
     if (cookie == NULL) {
         printf("ERROR: Trebuie sa te loghezi mai intai.\n");
         return;
@@ -573,10 +530,6 @@ void delete_book()
         printf("ERROR: Trebuie sa iti accesezi biblioteca mai intai.\n");
         return;
     }
-
-
-    char *id = read_console_input("id=");
-
 
     if (is_str_number(id) == 0) {
         printf("ERROR: ID-ul introdus este invalid (nu este un numar intreg pozitiv).\n");
@@ -594,6 +547,8 @@ void delete_book()
 
     snprintf(url_path, path_size, "/api/v1/tema/library/books/%s", id);
 
+    free(id);
+
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
     char *message = compute_delete_request("34.246.184.49", url_path, cookie, token);
     send_to_server(sockfd, message);
@@ -604,6 +559,7 @@ void delete_book()
     int res_code = get_res_code(response);
 
 
+    free(message);
     free(response);
 
 
@@ -613,9 +569,7 @@ void delete_book()
     }
 
 
-
     printf("SUCCESS: Cartea a fost stearsa cu succes.\n");
-
 }
 
 
@@ -626,8 +580,6 @@ void logout()
         printf("ERROR: Trebuie sa te loghezi mai intai.\n");
         return;
     }
-
-
 
 
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
@@ -642,6 +594,7 @@ void logout()
     int res_code = get_res_code(response);
 
 
+    free(message);
     free(response);
 
     if (res_code != 200 && res_code != 201) {
@@ -663,20 +616,10 @@ void logout()
 
 int main()
 {
-    char command[STR_STDIN_LENGTH];
+    char *command;
 
     while (1) {
-        fgets(command, sizeof(command), stdin);
-
-        // citeste de la tastatura urmatoarele nume de comenzi
-        /**
-         * register
-         * login
-         * 
-         * exit
-        */
-        if (command[strlen(command) - 1] == '\n')
-            command[strlen(command) - 1] = '\0';
+        command = read_console_input(NULL);
 
         if (strcmp(command, "register") == 0)
             register_user();
@@ -699,6 +642,6 @@ int main()
     }
 
 
-
+    free(command);
     return 0;
 }
