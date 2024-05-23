@@ -402,6 +402,10 @@ void get_book_by_id()
 
     int res_code = get_res_code(response);
 
+    free(url_path);
+    free(id);
+
+    free(message);
 
 
     if (res_code != 200 && res_code != 201) {
@@ -420,8 +424,6 @@ void get_book_by_id()
 
 void add_book()
 {
-
-
     char *title = read_console_input("title=");
     char *author = read_console_input("author=");
     char *publisher = read_console_input("publisher=");
@@ -522,12 +524,14 @@ void delete_book()
 
     if (cookie == NULL) {
         printf("ERROR: Trebuie sa te loghezi mai intai.\n");
+        free(id);
         return;
     }
 
 
     if (token == NULL) {
         printf("ERROR: Trebuie sa iti accesezi biblioteca mai intai.\n");
+        free(id);
         return;
     }
 
@@ -547,7 +551,6 @@ void delete_book()
 
     snprintf(url_path, path_size, "/api/v1/tema/library/books/%s", id);
 
-    free(id);
 
     int sockfd = open_connection("34.246.184.49", 8080, AF_INET, SOCK_STREAM, 0);
     char *message = compute_delete_request("34.246.184.49", url_path, cookie, token);
@@ -558,6 +561,8 @@ void delete_book()
 
     int res_code = get_res_code(response);
 
+    free(url_path);
+    free(id);
 
     free(message);
     free(response);

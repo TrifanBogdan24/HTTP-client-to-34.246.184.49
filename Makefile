@@ -3,11 +3,6 @@ build: client.c helpers.c buffer.c requests.c
 
 
 
-install-checker:
-	rm -rf homework4-public
-	git clone https://gitlab.cs.pub.ro/pcom/homework4-public.git
-
-
 clean:
 	rm -f ./a.out ./client
 
@@ -17,7 +12,13 @@ run:
 
 archive:
 	rm -rf ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC
-	zip -r ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC README.md Makefile *.h *c *.cpp
+	zip -r ~/Downloads/322CD_Trifan_Bogdan_Cristian_Tema4PC README.md Makefile *.h *c
+
+
+
+install-checker:
+	rm -rf homework4-public
+	git clone https://gitlab.cs.pub.ro/pcom/homework4-public.git
 
 
 checker-help:
