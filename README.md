@@ -6,7 +6,7 @@
 ---
 
 
-![img](https://pcom.pages.upb.ro/labs/lab9/images/http1.png)
+![img](img_01_http_request_response.png)
 
 Un protocol aflat la Nivelul 5 din `stiva OSI`,
 `HTTP` (**HyperText Transfer Protocol**) joaca un rol important
