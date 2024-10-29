@@ -18,7 +18,13 @@
 char *cookie = NULL;
 char *token = NULL;
 
-
+void debug(char *message, char *response)
+{   
+    printf("cookie %s\n\n", cookie);
+    printf("token %s\n\n", token);
+    printf("message %s\n\n", message);
+    printf("response %s\n\n", response);
+}
 
 int is_valid_input(char *str)
 {
@@ -208,7 +214,6 @@ void login()
 
     send_to_server(sockfd, message);
     char *response = receive_from_server(sockfd);
-    
 
     close_connection(sockfd);
     int res_code = get_res_code(response);
@@ -217,8 +222,6 @@ void login()
     // afisare raspuns: printf("%s\n", response);
 
 
-    free(request_body_json);
-    free(message);
 
 
 
@@ -253,6 +256,8 @@ void login()
         }
     }
     
+    debug(message, response);
+
     free(response);
 
 }
@@ -297,6 +302,7 @@ void enter_library()
         *p = '\0';
     }
 
+    debug(message, response);
 
     if (res_code != 200 && res_code != 201) {
         printf("ERROR: Ne pare rau, nu ai putut sa iti accesezi biblioteca.\n");
@@ -336,6 +342,7 @@ void get_all_books()
 
     int res_code = get_res_code(response);
 
+    debug(message, response);
 
 
     if (res_code != 200 && res_code != 201) {
@@ -471,6 +478,7 @@ void add_book()
 
     char *request_body_json = (char *) malloc(json_size * sizeof(char));
 
+
     snprintf(request_body_json, json_size,
         "{\n\t\"title\": \"%s\",\n\t\"author\": \"%s\",\n\t\"genre\": \"%s\",\n\t\"page_count\": %s,\n\t\"publisher\": \"%s\"\n}",
         title, author, genre, page_count, publisher);
@@ -490,7 +498,11 @@ void add_book()
     send_to_server(sockfd, message);
     char *response = receive_from_server(sockfd);
     int res_code = get_res_code(response);
-    
+    debug(message, response);
+
+
+    puts(response);
+
 
     close_connection(sockfd);
 
